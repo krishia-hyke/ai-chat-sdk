@@ -61,4 +61,11 @@ describe("ChatEmptyState", () => {
     render(<ChatEmptyState onSendMessage={mockOnSendMessage} subheading="Powered by AI" />);
     expect(screen.getByText("Powered by AI")).toBeInTheDocument();
   });
+
+  it("renders with is-compact class when compact prop is true", () => {
+    const { container } = render(
+      <ChatEmptyState onSendMessage={mockOnSendMessage} compact={true} />,
+    );
+    expect(container.querySelector(".ais-empty-state")).toHaveClass("is-compact");
+  });
 });

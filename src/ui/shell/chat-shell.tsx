@@ -397,6 +397,7 @@ function ChatShellContent({
   function handleNewConversation() {
     clearMessages();
     setActiveView("chat");
+    setSidebarOpen(false);
   }
 
   const sessionTitle = currentSessionTitle?.trim() || "New session";
@@ -435,6 +436,7 @@ function ChatShellContent({
         isOpen={isOverlayViewport ? sidebarOpen : false}
         onNewConversation={handleNewConversation}
         onToggle={() => setSidebarOpen((prev) => !prev)}
+        onClose={() => setSidebarOpen(false)}
         onViewChange={handleViewChange}
         artifactPanelOpen={artifactsCtx.panelState.isOpen}
         onToggleArtifacts={

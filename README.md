@@ -376,7 +376,7 @@ The root context provider. Must wrap all other SDK components.
 | `enableResumeRetry`        | `boolean`                       | `true`                | Show the composer Resume/Retry control for crashed runs (see [Run resilience](#run-resilience-stop-reconnect-resume)) |
 | `enableTools`              | `boolean`                       | `true`                | Show the Tools button and tools menu in the composer toolbar                                                          |
 | `enableVoiceInput`         | `boolean`                       | `true`                | Show the voice input (microphone) button in the composer toolbar                                                      |
-| `enableSendButton`         | `boolean`                       | `true`                | Show the on-screen Send button in the composer toolbar (useful on mobile where Enter is inefficient)                |
+| `enableSendButton`         | `boolean`                       | `true`                | Show the on-screen Send button in the composer toolbar (useful on mobile where Enter is inefficient)                  |
 | `defaultModel`             | `string`                        | `"claude-sonnet-4-6"` | Pre-selected model in the model picker                                                                                |
 | `theme`                    | `"light" \| "dark" \| "system"` | `"system"`            | Color theme applied via `data-theme` attribute                                                                        |
 | `themeOptions`             | `ChatThemeSpecification`        | `{}`                  | Per-mode brand token overrides (see [Whitelabeling & Custom Theming](#whitelabeling--custom-theming))                 |
@@ -747,12 +747,13 @@ const STARTER_CARDS: StarterCard[] = [
 />;
 ```
 
-| Prop            | Type                        | Default                                   | Description                                   |
-| --------------- | --------------------------- | ----------------------------------------- | --------------------------------------------- |
-| `heading`       | `string`                    | `"What would you like to work on today?"` | Main heading (rendered with a gradient style) |
-| `subheading`    | `string`                    | —                                         | Optional secondary line below the heading     |
-| `starterCards`  | `StarterCard[]`             | `[]`                                      | Grid of clickable prompt suggestion cards     |
-| `onSendMessage` | `(message: string) => void` | —                                         | Called with the card's `prompt` when clicked  |
+| Prop            | Type                        | Default                                   | Description                                                         |
+| --------------- | --------------------------- | ----------------------------------------- | ------------------------------------------------------------------- |
+| `heading`       | `string`                    | `"What would you like to work on today?"` | Main heading (rendered with a gradient style)                       |
+| `subheading`    | `string`                    | —                                         | Optional secondary line below the heading                           |
+| `starterCards`  | `StarterCard[]`             | `[]`                                      | Grid of clickable prompt suggestion cards                           |
+| `compact`       | `boolean`                   | `false`                                   | Optional compact layout variant for small viewports / mobile shells |
+| `onSendMessage` | `(message: string) => void` | —                                         | Called with the card's `prompt` when clicked                        |
 
 **`StarterCard` shape:**
 
