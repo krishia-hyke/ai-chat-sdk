@@ -1,5 +1,5 @@
 import React from "react";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import { ChatSidebar } from "./chat-sidebar";
 
@@ -14,7 +14,14 @@ jest.mock("../../headless/context/chat-provider", () => ({
 
 jest.mock("../../headless/hooks/use-conversation-history", () => ({
   useConversationHistory: () => ({
-    sessions: [],
+    sessions: [
+      {
+        sessionId: "session-123",
+        title: "Test session",
+        createdAt: "2026-01-01T00:00:00Z",
+        updatedAt: "2026-01-01T00:00:00Z",
+      },
+    ],
     isLoading: false,
     refresh: jest.fn(),
     deleteSession: jest.fn(),
@@ -56,5 +63,18 @@ describe("ChatSidebar custom links", () => {
 
     fireEvent.click(link);
     expect(onClick).toHaveBeenCalledTimes(1);
+  });
+  it("switches activeView back to chat when a recent session is clicked", async () => {
+    const onViewChange = jest.fn();
+    render(<ChatSidebar isOpen onViewChange={onViewChange} activeView="recents" />);
+
+    const sessionItem = screen.getByText("Test session");
+    expect(sessionItem).toBeInTheDocument();
+
+    fireEvent.click(sessionItem);
+
+    await waitFor(() => {
+      expect(onViewChange).toHaveBeenCalledWith("chat");
+    });
   });
 });

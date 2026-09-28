@@ -346,12 +346,12 @@ The root context provider. Must wrap all other SDK components.
 </ChatProvider>
 ```
 
-| Prop             | Type                   | Required | Description                                           |
-| ---------------- | ---------------------- | -------- | ----------------------------------------------------- |
-| `organizationId` | `string`               | Yes      | Tenant identifier passed to the adapter on every call |
-| `adapter`        | `ChatAdapter`          | Yes      | Your adapter instance                                 |
-| `config`         | `ChatConfig`           | No       | Feature flags and UI defaults (see below)             |
-| `strings`        | `Partial<ChatStrings>` | No       | Override any UI copy (see below)                      |
+| Prop             | Type                  | Required | Description                                                   |
+| ---------------- | --------------------- | -------- | ------------------------------------------------------------- |
+| `organizationId` | `string`              | Yes      | Tenant identifier passed to the adapter on every call         |
+| `adapter`        | `ChatAdapter`         | Yes      | Your adapter instance                                         |
+| `config`         | `ChatConfig`          | No       | Feature flags and UI defaults (see below)                     |
+| `strings`        | `ChatProviderStrings` | No       | Override any UI copy or supply custom string keys (see below) |
 
 > **`organizationId` when there is no per-org routing:** If your application does not have per-tenant URLs (e.g. a platform admin console, a single-tenant deployment, or a white-label product with no org scoping), pass any stable string that your backend will recognise — the value is forwarded to your adapter on every call and is otherwise opaque to the SDK. Common choices are `"default"`, your product slug, or an internal platform identifier.
 >
@@ -376,7 +376,7 @@ The root context provider. Must wrap all other SDK components.
 | `enableResumeRetry`        | `boolean`                       | `true`                | Show the composer Resume/Retry control for crashed runs (see [Run resilience](#run-resilience-stop-reconnect-resume)) |
 | `enableTools`              | `boolean`                       | `true`                | Show the Tools button and tools menu in the composer toolbar                                                          |
 | `enableVoiceInput`         | `boolean`                       | `true`                | Show the voice input (microphone) button in the composer toolbar                                                      |
-| `enableSendButton`         | `boolean`                       | `true`                | Show the on-screen Send button in the composer toolbar (useful on mobile where Enter is inefficient)                |
+| `enableSendButton`         | `boolean`                       | `true`                | Show the on-screen Send button in the composer toolbar (useful on mobile where Enter is inefficient)                  |
 | `defaultModel`             | `string`                        | `"claude-sonnet-4-6"` | Pre-selected model in the model picker                                                                                |
 | `theme`                    | `"light" \| "dark" \| "system"` | `"system"`            | Color theme applied via `data-theme` attribute                                                                        |
 | `themeOptions`             | `ChatThemeSpecification`        | `{}`                  | Per-mode brand token overrides (see [Whitelabeling & Custom Theming](#whitelabeling--custom-theming))                 |
@@ -406,6 +406,14 @@ The root context provider. Must wrap all other SDK components.
 | `approvalDenied`                | `"Denied"`                                        |
 | `approvalExpired`               | `"Expired"`                                       |
 | `approvalCanceled`              | `"Canceled"`                                      |
+| `recentsTitle`                  | `"Chats"`                                         |
+| `recentsSectionTitle`           | `"Recents"`                                       |
+| `searchChats`                   | `"Search chats..."`                               |
+| `noConversationsYet`            | `"No conversations yet"`                          |
+| `noMatchingChats`               | `"No chats match your search."`                   |
+| `emptyStateHeading`             | `"What would you like to work on today?"`         |
+
+> **Extensible index signature:** `strings` accepts `ChatProviderStrings`, which allows passing arbitrary domain-specific keys (`[key: string]: string | undefined`) without TypeScript errors or `as any` casting. Any custom keys provided are merged into `useChatContext().strings`.
 
 ---
 
@@ -452,6 +460,9 @@ A full-page chat interface with a collapsible sidebar, resizable panels for sour
 | `className`           | `string`                                | Additional CSS class on the shell root element                                                                                                                                                                               |
 | `style`               | `React.CSSProperties`                   | Inline styles merged onto the shell root. Pass `{ height: "100%" }` when a bounded parent provides the height                                                                                                                |
 | `viewportOffset`      | `{ top?: number; bottom?: number }`     | Pixels of host-app chrome (header/footer) rendered outside the shell — subtracted from the viewport when computing the shell's height. Equivalent to setting `--ais-chrome-offset-top` / `--ais-chrome-offset-bottom` in CSS |
+| `activeView`          | `SidebarView` (`"chat"` \| `"recents"`) | Active main view for controlled usage                                                                                                                                                                                        |
+| `initialActiveView`   | `SidebarView` (`"chat"` \| `"recents"`) | Initial main view when uncontrolled. Defaults to `"chat"`                                                                                                                                                                    |
+| `onViewChange`        | `(view: SidebarView) => void`           | Callback fired whenever the active view transitions between `"chat"` and `"recents"`                                                                                                                                         |
 
 > **Height requirement:** `ChatShell` manages its own internal scroll and resizable panel layout. It must be rendered inside a container with an explicit, bounded height — a flex parent with `flex: 1` or `height: 100%`. Without a bounded height the resizable panels have nothing to fill and will collapse.
 >

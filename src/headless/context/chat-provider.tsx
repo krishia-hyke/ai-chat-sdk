@@ -4,6 +4,7 @@ import React, { createContext, useCallback, useContext, useMemo, useState } from
 import type { ChatAdapter } from "../types/adapter";
 import type {
   ChatConfig,
+  ChatProviderStrings,
   ChatStrings,
   ChatTheme,
   ChatThemeSpecification,
@@ -117,7 +118,7 @@ export interface ChatProviderProps extends React.HTMLAttributes<HTMLDivElement> 
   adapter: ChatAdapter;
   organizationId?: string;
   config?: ChatConfig;
-  strings?: Partial<ChatStrings>;
+  strings?: ChatProviderStrings;
   plugins?: ChatPlugins;
   onSlashCommand?: SlashCommandHandler;
   "data-chat-provider"?: string;
@@ -219,7 +220,10 @@ export function ChatProvider({
     themeOptions: config.themeOptions ?? {},
   };
 
-  const mergedStrings = useMemo(() => ({ ...defaultStrings, ...strings }), [strings]);
+  const mergedStrings = useMemo(
+    () => ({ ...defaultStrings, ...strings }) as ChatStrings,
+    [strings],
+  );
 
   const value = useMemo<ChatContextValue>(
     () => ({

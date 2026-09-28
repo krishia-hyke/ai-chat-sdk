@@ -51,7 +51,7 @@ function getGroupLabel(dateStr: string): string {
 const GROUP_ORDER = ["Today", "Yesterday", "Previous 7 days", "Previous 30 days", "Older"];
 
 export function RecentsPage({ onSelectSession, onNewConversation }: RecentsPageProps) {
-  const { adapter } = useChatContext();
+  const { adapter, strings } = useChatContext();
   const { sessions, isLoading, deleteSession } = useConversationHistory();
   const { loadSession, currentSessionId, clearMessages } = useChat();
   const [query, setQuery] = useState("");
@@ -114,16 +114,16 @@ export function RecentsPage({ onSelectSession, onNewConversation }: RecentsPageP
   return (
     <div className="ais-recents-page">
       <div className="ais-recents-header">
-        <h1 className="ais-recents-title">Chats</h1>
+        <h1 className="ais-recents-title">{strings?.recentsTitle ?? "Chats"}</h1>
         <div className="ais-recents-search-wrap">
           <Search size={15} className="ais-recents-search-icon" />
           <input
             className="ais-recents-search"
             type="search"
-            placeholder="Search chats..."
+            placeholder={strings?.searchChats ?? "Search chats..."}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            aria-label="Search chats"
+            aria-label={strings?.searchChats ?? "Search chats"}
           />
         </div>
       </div>
@@ -131,14 +131,18 @@ export function RecentsPage({ onSelectSession, onNewConversation }: RecentsPageP
       <div className="ais-recents-list">
         {isLoading && (
           <div className="ais-recents-empty">
-            <p>Loading...</p>
+            <p>{strings?.loading ?? "Loading..."}</p>
           </div>
         )}
 
         {!isLoading && filtered.length === 0 && (
           <div className="ais-recents-empty">
             <MessageCircle size={36} strokeWidth={1.4} />
-            <p>{query ? "No chats match your search." : "No conversations yet."}</p>
+            <p>
+              {query
+                ? (strings?.noMatchingChats ?? "No chats match your search.")
+                : (strings?.noConversationsYet ?? "No conversations yet.")}
+            </p>
           </div>
         )}
 

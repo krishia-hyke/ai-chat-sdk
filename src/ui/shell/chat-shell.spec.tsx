@@ -71,7 +71,13 @@ jest.mock("../sidebar/chat-sidebar", () => ({
 }));
 
 jest.mock("../recents/recents-page", () => ({
-  RecentsPage: () => null,
+  RecentsPage: ({ onSelectSession }: { onSelectSession?: () => void }) => (
+    <div data-testid="recents-page">
+      <button data-testid="select-session-btn" onClick={() => onSelectSession?.()}>
+        Select
+      </button>
+    </div>
+  ),
 }));
 
 jest.mock("../primitives/resizable-handle", () => ({
@@ -168,5 +174,57 @@ describe("ChatShell banner slots", () => {
       value: originalInnerHeight,
       configurable: true,
     });
+  });
+  it("supports controlled activeView and transitions view when onSelectSession fires in RecentsPage", () => {
+    const onViewChange = jest.fn();
+
+    const { rerender } = render(
+      <ChatProvider
+        adapter={
+          {
+            createSession: jest.fn(),
+            listSessions: jest.fn().mockResolvedValue([]),
+            loadSession: jest.fn(),
+            sendMessage: jest.fn(),
+          } as any
+        }
+        organizationId="org-1"
+        config={{ enableFileUpload: false, enableCommandPalette: false }}
+      >
+        <ChatShell initialActiveView="recents" onViewChange={onViewChange} />
+      </ChatProvider>,
+    );
+
+    expect(screen.getByTestId("recents-page")).toBeInTheDocument();
+    expect(screen.queryByTestId("chat-messages")).not.toBeInTheDocument();
+
+    // Clicking session in RecentsPage switches view back to chat
+    act(() => {
+      screen.getByTestId("select-session-btn").click();
+    });
+
+    expect(onViewChange).toHaveBeenCalledWith("chat");
+    expect(screen.getByTestId("chat-messages")).toBeInTheDocument();
+    expect(screen.queryByTestId("recents-page")).not.toBeInTheDocument();
+
+    // Controlled activeView="recents"
+    rerender(
+      <ChatProvider
+        adapter={
+          {
+            createSession: jest.fn(),
+            listSessions: jest.fn().mockResolvedValue([]),
+            loadSession: jest.fn(),
+            sendMessage: jest.fn(),
+          } as any
+        }
+        organizationId="org-1"
+        config={{ enableFileUpload: false, enableCommandPalette: false }}
+      >
+        <ChatShell activeView="recents" onViewChange={onViewChange} />
+      </ChatProvider>,
+    );
+
+    expect(screen.getByTestId("recents-page")).toBeInTheDocument();
   });
 });

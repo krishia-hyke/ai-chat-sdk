@@ -22,13 +22,22 @@ interface ChatEmptyStateProps {
 export function ChatEmptyState({
   onSendMessage,
   starterCards = [],
-  heading = "What would you like to work on today?",
+  heading,
   subheading,
 }: ChatEmptyStateProps) {
   let enableSlashCommands = true;
+  let resolvedHeading = heading ?? "What would you like to work on today?";
+  let resolvedSubheading = subheading;
+
   try {
-    const { config } = useChatContext();
+    const { config, strings } = useChatContext();
     enableSlashCommands = config.enableSlashCommands;
+    if (!heading && strings.emptyStateHeading) {
+      resolvedHeading = strings.emptyStateHeading;
+    }
+    if (!subheading && strings.emptyStateDescription) {
+      resolvedSubheading = strings.emptyStateDescription;
+    }
   } catch {
     // Graceful fallback if rendered outside a ChatProvider
   }
@@ -37,8 +46,8 @@ export function ChatEmptyState({
     <div className="ais-empty-state">
       <div className="ais-empty-state-inner">
         <div className="ais-empty-prompt-header">
-          <h2 className="ais-empty-heading ais-empty-heading--gradient">{heading}</h2>
-          {subheading && <p className="ais-empty-subheading">{subheading}</p>}
+          <h2 className="ais-empty-heading ais-empty-heading--gradient">{resolvedHeading}</h2>
+          {resolvedSubheading && <p className="ais-empty-subheading">{resolvedSubheading}</p>}
         </div>
 
         {starterCards.length > 0 && (

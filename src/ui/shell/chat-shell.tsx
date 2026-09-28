@@ -95,6 +95,19 @@ interface ChatShellProps {
    * Overrides `config.enableSendButton` if provided. Defaults to true.
    */
   enableSendButton?: boolean;
+  /**
+   * The currently active main view. Supports controlled usage (`"chat"` | `"recents"`).
+   * When omitted, the view state is managed internally.
+   */
+  activeView?: SidebarView;
+  /**
+   * Initial view when uncontrolled. Defaults to `"chat"`.
+   */
+  initialActiveView?: SidebarView;
+  /**
+   * Callback fired whenever the active view changes between `"chat"` and `"recents"`.
+   */
+  onViewChange?: (view: SidebarView) => void;
 }
 
 export function ChatShell({
@@ -117,6 +130,9 @@ export function ChatShell({
   enableTools,
   enableVoiceInput,
   enableSendButton,
+  activeView,
+  initialActiveView,
+  onViewChange,
 }: ChatShellProps) {
   const { config } = useChatContext();
   const artifactsCtx = useArtifacts();
@@ -151,6 +167,9 @@ export function ChatShell({
         enableTools={enableTools}
         enableVoiceInput={enableVoiceInput}
         enableSendButton={enableSendButton}
+        activeView={activeView}
+        initialActiveView={initialActiveView}
+        onViewChange={onViewChange}
       />
     </ChatStateProvider>
   );
@@ -187,6 +206,9 @@ function ChatShellContent({
   enableTools,
   enableVoiceInput,
   enableSendButton,
+  activeView: propActiveView,
+  initialActiveView,
+  onViewChange,
 }: ChatShellContentProps) {
   const {
     sendMessage,
@@ -387,16 +409,23 @@ function ChatShellContent({
     }
   }, []);
 
-  const [activeView, setActiveView] = useState<SidebarView>("chat");
+  const [internalActiveView, setInternalActiveView] = useState<SidebarView>(
+    initialActiveView ?? propActiveView ?? "chat",
+  );
+  const activeView = propActiveView !== undefined ? propActiveView : internalActiveView;
 
-  function handleViewChange(view: SidebarView) {
-    setActiveView(view);
-    setSidebarOpen(false);
-  }
+  const handleViewChange = React.useCallback(
+    (view: SidebarView) => {
+      setInternalActiveView(view);
+      onViewChange?.(view);
+      setSidebarOpen(false);
+    },
+    [onViewChange],
+  );
 
   function handleNewConversation() {
     clearMessages();
-    setActiveView("chat");
+    handleViewChange("chat");
   }
 
   const sessionTitle = currentSessionTitle?.trim() || "New session";
@@ -500,7 +529,7 @@ function ChatShellContent({
                 <main className="ais-chat-main">
                   {activeView === "recents" ? (
                     <RecentsPage
-                      onSelectSession={() => setActiveView("chat")}
+                      onSelectSession={() => handleViewChange("chat")}
                       onNewConversation={handleNewConversation}
                     />
                   ) : (

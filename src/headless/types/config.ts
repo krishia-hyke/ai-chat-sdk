@@ -87,6 +87,12 @@ export const defaultStrings = {
   footerDisclaimer: "AI responses can contain mistakes.",
   exportArtifact: "Save to workspace",
   exportArtifactSub: "Attach to your workspace",
+  recentsTitle: "Chats",
+  recentsSectionTitle: "Recents",
+  searchChats: "Search chats...",
+  noConversationsYet: "No conversations yet",
+  noMatchingChats: "No chats match your search.",
+  emptyStateHeading: "What would you like to work on today?",
   approvalTitle: "Approval required",
   approvalApprove: "Approve",
   approvalDeny: "Deny",
@@ -102,4 +108,28 @@ export const defaultStrings = {
   responseStopped: "This response was stopped.",
 } as const;
 
-export type ChatStrings = typeof defaultStrings;
+export type DefaultChatStringKey = keyof typeof defaultStrings;
+
+export type DefaultChatStrings = {
+  [K in DefaultChatStringKey]: string;
+};
+
+/**
+ * Fully resolved strings dictionary provided by ChatContext.
+ * Guaranteed to provide non-empty defaults for all built-in keys,
+ * while allowing extensible access for custom keys.
+ */
+export interface ChatStrings extends DefaultChatStrings {
+  [key: string]: string;
+}
+
+/**
+ * Partial strings dictionary accepted by ChatProvider.
+ * All built-in keys are optional and accept any custom string (not just exact literals),
+ * with an index signature allowing arbitrary domain-specific keys without TypeScript casting.
+ */
+export type ChatProviderStrings = {
+  [K in DefaultChatStringKey]?: string;
+} & {
+  [key: string]: string | undefined;
+};

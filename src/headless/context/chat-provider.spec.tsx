@@ -102,4 +102,33 @@ describe("ChatProvider", () => {
 
     spy.mockRestore();
   });
+  it("merges custom strings and extensible keys into strings context", () => {
+    function StringsConsumer() {
+      const { strings } = useChatContext();
+      return (
+        <div>
+          <span data-testid="placeholder">{strings.composerPlaceholder}</span>
+          <span data-testid="recents-title">{strings.recentsTitle}</span>
+          <span data-testid="custom-key">{strings["customDomainKey"]}</span>
+        </div>
+      );
+    }
+
+    render(
+      <ChatProvider
+        adapter={mockAdapter}
+        strings={{
+          composerPlaceholder: "Ask Theo anything...",
+          recentsTitle: "Conversations",
+          customDomainKey: "Custom Value",
+        }}
+      >
+        <StringsConsumer />
+      </ChatProvider>,
+    );
+
+    expect(screen.getByTestId("placeholder")).toHaveTextContent("Ask Theo anything...");
+    expect(screen.getByTestId("recents-title")).toHaveTextContent("Conversations");
+    expect(screen.getByTestId("custom-key")).toHaveTextContent("Custom Value");
+  });
 });
