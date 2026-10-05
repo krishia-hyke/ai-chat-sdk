@@ -148,6 +148,45 @@ describe("runnerEventToStep", () => {
     expect(runnerEventToStep("status", { payload: { state: "completed" } }, 0)).toBeNull();
   });
 
+  it("maps simple status events to reasoning steps", () => {
+    expect(runnerEventToStep("status", { label: "Searching documents..." }, 0)).toEqual({
+      type: "reasoning",
+      label: "Searching documents...",
+      status: "in_progress",
+      step_id: "runner_status_searching_documents___",
+    });
+
+    expect(
+      runnerEventToStep(
+        "status",
+        { payload: { label: "Found 3 results", phase: "done", duration_ms: 120 } },
+        0,
+      ),
+    ).toEqual({
+      type: "reasoning",
+      label: "Found 3 results",
+      status: "done",
+      step_id: "runner_status_found_3_results",
+      duration_ms: 120,
+    });
+
+    expect(
+      runnerEventToStep(
+        "status",
+        { label: "Filtering", step_id: "custom_step_1", phase: "start" },
+        0,
+      ),
+    ).toEqual({
+      type: "reasoning",
+      label: "Filtering",
+      status: "in_progress",
+      step_id: "custom_step_1",
+    });
+
+    expect(runnerEventToStep("status", { label: "completed" }, 0)).toBeNull();
+    expect(runnerEventToStep("status", { label: "canceled" }, 0)).toBeNull();
+  });
+
   it("maps tool_call to a tool step with a per-occurrence id, skipping llm_chat", () => {
     expect(runnerEventToStep("tool_call", { payload: { name: "search" } }, 2)).toEqual({
       type: "tool_call",

@@ -6,7 +6,17 @@ export interface StreamEventShape {
   message?: string;
   event?: string;
   type?: string;
+  label?: string;
+  detail?: string;
+  status?: string;
+  phase?: string;
+  step_id?: string;
+  id?: string;
+  duration_ms?: number;
+  tokens_used?: number;
+  step?: Partial<AgentStepEvent>;
   payload?: Record<string, unknown>;
+  [key: string]: unknown;
 }
 
 export function resolveEventType(
@@ -153,12 +163,53 @@ export function runnerEventToStep(
       };
     case "status": {
       const state = asString(payload["state"]);
+      if (state === "completed" || state === "canceled") {
+        return null;
+      }
       if (state === "analyzing" || state === "acting") {
         return {
           type: "reasoning",
           label: asString(payload["status"]) || "Working…",
           status: "in_progress",
           step_id: "runner_reasoning",
+        };
+      }
+
+      // Support simple/general status events:
+      // { type: "status", label: "Searching..." }
+      // { type: "status", payload: { label: "Searching..." } }
+      // { type: "status", label: "Searching...", phase: "start" | "done" }
+      const rawLabel =
+        asString(parsed["label"]) ||
+        asString(payload["label"]) ||
+        asString(payload["status"]) ||
+        asString(parsed["status"]) ||
+        asString(parsed["message"]) ||
+        asString(payload["message"]);
+
+      if (rawLabel && rawLabel !== "completed" && rawLabel !== "canceled") {
+        const phase = asString(parsed["phase"]) || asString(payload["phase"]);
+        const isDone = phase === "done" || phase === "completed";
+        const explicitId =
+          asString(parsed["step_id"]) ||
+          asString(payload["step_id"]) ||
+          asString(parsed["id"]) ||
+          asString(payload["id"]);
+        const labelForId = rawLabel.toLowerCase().replace(/[^a-z0-9_]/g, "_");
+        const stepId = explicitId || `runner_status_${labelForId}`;
+        const duration =
+          typeof parsed["duration_ms"] === "number"
+            ? (parsed["duration_ms"] as number)
+            : typeof payload["duration_ms"] === "number"
+              ? (payload["duration_ms"] as number)
+              : undefined;
+
+        return {
+          type: "reasoning",
+          label: rawLabel,
+          status: isDone ? "done" : "in_progress",
+          step_id: stepId,
+          ...(duration !== undefined ? { duration_ms: duration } : {}),
         };
       }
       return null;
