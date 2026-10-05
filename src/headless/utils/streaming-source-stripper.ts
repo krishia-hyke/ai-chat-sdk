@@ -8,7 +8,8 @@ export interface ParsedSourceBlock {
 }
 
 const SOURCE_BLOCK_RE = /\[source:[^\]]*\]/gi;
-const INCOMPLETE_TRAILING_SOURCE_RE = /(?:\r?\n)*\[s?(?:o(?:u(?:r(?:c(?:e)?)?)?)?)?(?::[^\n\]]*)?$/i;
+const INCOMPLETE_TRAILING_SOURCE_RE =
+  /(?:\r?\n)*\[s?(?:o(?:u(?:r(?:c(?:e)?)?)?)?)?(?::[^\n\]]*)?$/i;
 
 /**
  * Parses all [source: ...] citation blocks from text content.
@@ -26,8 +27,7 @@ export function parseSources(content: string): MessageSource[] {
     if (!name || name.toLowerCase() === "basecamp") continue;
 
     const tags = /,\s*tags:\s*([^,\]]+)/i.exec(block)?.[1]?.trim();
-    const classification =
-      /,\s*classification:\s*([^,\]"]+?)(?:,|\])/i.exec(block)?.[1]?.trim();
+    const classification = /,\s*classification:\s*([^,\]"]+?)(?:,|\])/i.exec(block)?.[1]?.trim();
     const citation =
       /,\s*citation:\s*"([\s\S]*?)"/i.exec(block)?.[1]?.trim() ??
       /,\s*citation:\s*([^,\]]+)/i.exec(block)?.[1]?.trim();

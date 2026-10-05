@@ -119,7 +119,9 @@ export function ChatMessage({
   const isMobile = useIsMobile();
   const enableArtifacts = config?.enableArtifacts ?? true;
   const [copied, setCopied] = React.useState(false);
-  const [activeCitationSource, setActiveCitationSource] = React.useState<MessageSource | null>(null);
+  const [activeCitationSource, setActiveCitationSource] = React.useState<MessageSource | null>(
+    null,
+  );
   const copiedTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   React.useEffect(
     () => () => {
@@ -312,30 +314,28 @@ export function ChatMessage({
           : null}
         {hasSources ? (
           <div className="ais-sources-pills-list">
-            {renderSourcePill ? (
-              message.sources!.map((source, index) => (
-                <span
-                  key={source.id || index}
-                  onClick={() => handleCiteClick(index)}
-                  className="ais-source-pill-wrapper"
-                >
-                  {renderSourcePill(source, index)}
-                </span>
-              ))
-            ) : (
-              message.sources!.map((source, index) => (
-                <button
-                  key={source.id || index}
-                  type="button"
-                  className="ais-sources-pill"
-                  aria-label={`View ${message.sources!.length} sources: ${source.title}`}
-                  onClick={() => handleCiteClick(index)}
-                >
-                  <FileText size={12} className="ais-sources-pill-icon" aria-hidden="true" />
-                  <span className="ais-sources-pill-title">{source.title}</span>
-                </button>
-              ))
-            )}
+            {renderSourcePill
+              ? message.sources!.map((source, index) => (
+                  <span
+                    key={source.id || index}
+                    onClick={() => handleCiteClick(index)}
+                    className="ais-source-pill-wrapper"
+                  >
+                    {renderSourcePill(source, index)}
+                  </span>
+                ))
+              : message.sources!.map((source, index) => (
+                  <button
+                    key={source.id || index}
+                    type="button"
+                    className="ais-sources-pill"
+                    aria-label={`View ${message.sources!.length} sources: ${source.title}`}
+                    onClick={() => handleCiteClick(index)}
+                  >
+                    <FileText size={12} className="ais-sources-pill-icon" aria-hidden="true" />
+                    <span className="ais-sources-pill-title">{source.title}</span>
+                  </button>
+                ))}
           </div>
         ) : null}
         {/* Approval cards render DURING streaming — the run is paused server-side

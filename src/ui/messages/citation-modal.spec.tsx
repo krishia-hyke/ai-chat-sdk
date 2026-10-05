@@ -31,9 +31,7 @@ describe("CitationModal", () => {
     render(<CitationModal source={mockSource} onClose={onClose} />);
 
     expect(screen.getByText("Employee Handbook.pdf")).toBeInTheDocument();
-    expect(
-      screen.getByText('"Employees may work remotely 2 days per week."'),
-    ).toBeInTheDocument();
+    expect(screen.getByText('"Employees may work remotely 2 days per week."')).toBeInTheDocument();
     expect(screen.getByText("HR, Remote")).toBeInTheDocument();
     expect(screen.getByText("Internal")).toBeInTheDocument();
     expect(screen.getByText("Page 14")).toBeInTheDocument();

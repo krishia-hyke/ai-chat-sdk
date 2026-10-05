@@ -205,21 +205,26 @@ export function SourcesPanel({
         ) : (
           <div className="ais-sp-cards">
             {activeSources.map((source, i) => (
-              <SourceCard key={source.id || i} source={source} index={i} cardRef={setCardRef(i)} onSelect={(src) => { if (onSourceClick) onSourceClick(src); setActiveModalSource(src); }} />
+              <SourceCard
+                key={source.id || i}
+                source={source}
+                index={i}
+                cardRef={setCardRef(i)}
+                onSelect={(src) => {
+                  if (onSourceClick) onSourceClick(src);
+                  setActiveModalSource(src);
+                }}
+              />
             ))}
           </div>
         )}
       </div>
-      {activeModalSource && (
-        renderCitationModal ? (
+      {activeModalSource &&
+        (renderCitationModal ? (
           renderCitationModal(activeModalSource, () => setActiveModalSource(null))
         ) : (
-          <CitationModal
-            source={activeModalSource}
-            onClose={() => setActiveModalSource(null)}
-          />
-        )
-      )}
+          <CitationModal source={activeModalSource} onClose={() => setActiveModalSource(null)} />
+        ))}
     </aside>
   );
 }

@@ -1,8 +1,4 @@
-import {
-  StreamingSourceStripper,
-  parseSources,
-  stripSources,
-} from "./streaming-source-stripper";
+import { StreamingSourceStripper, parseSources, stripSources } from "./streaming-source-stripper";
 
 describe("streaming-source-stripper", () => {
   describe("parseSources", () => {
@@ -100,7 +96,7 @@ describe("streaming-source-stripper", () => {
 
     it("handles multiple streamed sources at the end of the text", () => {
       const stripper = new StreamingSourceStripper();
-      const out1 = stripper.process("Here is the answer.\n\n[source: Doc1.pdf, citation: \"One\"]");
+      const out1 = stripper.process('Here is the answer.\n\n[source: Doc1.pdf, citation: "One"]');
       expect(out1).toBe("Here is the answer.");
 
       const out2 = stripper.process('\n[source: Doc2.pdf, citation: "Two"]');

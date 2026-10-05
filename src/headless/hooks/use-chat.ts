@@ -320,7 +320,9 @@ function useProvideChat(
                         isStreaming: false,
                         content: stripSources(accumProcessedContentRef.current || msg.content),
                         sources: finalSources ?? msg.sources,
-                        steps: msg.steps?.map((s) => (s.status === "in_progress" ? { ...s, status: "done" } : s)),
+                        steps: msg.steps?.map((s) =>
+                          s.status === "in_progress" ? { ...s, status: "done" } : s,
+                        ),
                         elapsedMs: msg.startedAt ? Date.now() - msg.startedAt : msg.elapsedMs,
                       }
                     : msg,
@@ -481,7 +483,9 @@ function useProvideChat(
                   const rawStep =
                     parsed.step ||
                     (parsed.payload?.step as Partial<AgentStepEvent> | undefined) ||
-                    (parsed.payload && typeof parsed.payload === "object" && ("label" in parsed.payload || "step_id" in parsed.payload)
+                    (parsed.payload &&
+                    typeof parsed.payload === "object" &&
+                    ("label" in parsed.payload || "step_id" in parsed.payload)
                       ? (parsed.payload as unknown as Partial<AgentStepEvent>)
                       : undefined) ||
                     (parsed.label ? (parsed as unknown as Partial<AgentStepEvent>) : undefined);
@@ -497,7 +501,9 @@ function useProvideChat(
                       label: rawStep.label ?? "Step",
                       status: rawStep.status ?? "in_progress",
                       step_id: stepId,
-                      ...(rawStep.duration_ms !== undefined ? { duration_ms: rawStep.duration_ms } : {}),
+                      ...(rawStep.duration_ms !== undefined
+                        ? { duration_ms: rawStep.duration_ms }
+                        : {}),
                       ...(rawStep.detail !== undefined ? { detail: rawStep.detail } : {}),
                     };
 
@@ -506,14 +512,17 @@ function useProvideChat(
                     const updatedExisting =
                       normalizedStep.status === "in_progress" && idx < 0
                         ? existing.map((s) =>
-                            s.status === "in_progress" && (s.type === "reasoning" || s.type === "tool_call")
+                            s.status === "in_progress" &&
+                            (s.type === "reasoning" || s.type === "tool_call")
                               ? { ...s, status: "done" as const }
                               : s,
                           )
                         : existing;
                     const nextSteps =
                       idx >= 0
-                        ? updatedExisting.map((s, i) => (i === idx ? { ...s, ...normalizedStep } : s))
+                        ? updatedExisting.map((s, i) =>
+                            i === idx ? { ...s, ...normalizedStep } : s,
+                          )
                         : [...updatedExisting, normalizedStep];
                     return { ...msg, steps: nextSteps };
                   }
@@ -529,7 +538,8 @@ function useProvideChat(
                   const updatedExisting =
                     step.status === "in_progress" && idx < 0
                       ? existing.map((s) =>
-                          s.status === "in_progress" && (s.type === "reasoning" || s.type === "tool_call")
+                          s.status === "in_progress" &&
+                          (s.type === "reasoning" || s.type === "tool_call")
                             ? { ...s, status: "done" as const }
                             : s,
                         )
@@ -638,7 +648,9 @@ function useProvideChat(
                   };
                 }
 
-                const nextContent = cleanedAccumContent || (parsedContent ? `${msg.content}${parsedContent}` : msg.content);
+                const nextContent =
+                  cleanedAccumContent ||
+                  (parsedContent ? `${msg.content}${parsedContent}` : msg.content);
 
                 return {
                   ...msg,
@@ -730,8 +742,8 @@ function useProvideChat(
         // ids) to avoid duplicated/misplaced chips. Tool-approval cards are preserved
         // (deduped by approvalId on replay) so a still-pending approval survives.
         accumContentRef.current = "";
-      accumProcessedContentRef.current = "";
-      streamingSourceStripperRef.current = new StreamingSourceStripper();
+        accumProcessedContentRef.current = "";
+        streamingSourceStripperRef.current = new StreamingSourceStripper();
         stepSeqRef.current = 0;
         setMessages((prev) =>
           prev.map((msg) =>

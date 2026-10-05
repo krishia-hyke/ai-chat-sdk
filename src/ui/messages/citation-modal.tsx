@@ -48,25 +48,23 @@ export function CitationModal({ source, onClose, className, container }: Citatio
     (typeof source.metadata?.citation === "string" ? source.metadata.citation : undefined);
 
   // Strip duplicate surrounding quotes so it renders as a clean single quote
-  const cleanSnippet = rawSnippet
-    ? rawSnippet.replace(/^["'\s]+|["'\s]+$/g, "").trim()
-    : undefined;
+  const cleanSnippet = rawSnippet ? rawSnippet.replace(/^["'\s]+|["'\s]+$/g, "").trim() : undefined;
 
   const tags =
     typeof source.metadata?.tags === "string"
       ? source.metadata.tags
       : Array.isArray(source.tags)
-      ? source.tags.join(", ")
-      : Array.isArray(source.metadata?.tags)
-      ? (source.metadata.tags as string[]).join(", ")
-      : undefined;
+        ? source.tags.join(", ")
+        : Array.isArray(source.metadata?.tags)
+          ? (source.metadata.tags as string[]).join(", ")
+          : undefined;
 
   const classification =
     typeof source.metadata?.classification === "string"
       ? source.metadata.classification
       : typeof source.classification === "string"
-      ? source.classification
-      : undefined;
+        ? source.classification
+        : undefined;
 
   const page = source.page;
   const section = source.section;
@@ -106,9 +104,7 @@ export function CitationModal({ source, onClose, className, container }: Citatio
 
           <div className="ais-citation-modal-body">
             {cleanSnippet && (
-              <blockquote className="ais-citation-modal-snippet">
-                "{cleanSnippet}"
-              </blockquote>
+              <blockquote className="ais-citation-modal-snippet">"{cleanSnippet}"</blockquote>
             )}
 
             {(tags || classification || page !== undefined || section) && (
@@ -117,12 +113,8 @@ export function CitationModal({ source, onClose, className, container }: Citatio
                 {classification && (
                   <span className="ais-citation-classification">{classification}</span>
                 )}
-                {page !== undefined && (
-                  <span className="ais-citation-page">Page {page}</span>
-                )}
-                {section && (
-                  <span className="ais-citation-section">{section}</span>
-                )}
+                {page !== undefined && <span className="ais-citation-page">Page {page}</span>}
+                {section && <span className="ais-citation-section">{section}</span>}
               </div>
             )}
 

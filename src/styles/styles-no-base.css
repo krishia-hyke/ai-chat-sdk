@@ -6486,7 +6486,9 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: color 0.15s, background-color 0.15s;
+  transition:
+    color 0.15s,
+    background-color 0.15s;
   flex-shrink: 0;
 }
 
@@ -6699,7 +6701,10 @@
 /* ─── Sources Panel Card Interactivity ──────────────────────── */
 .ais-sp-card--interactive {
   cursor: pointer;
-  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease,
+    border-color 0.15s ease;
 }
 
 .ais-sp-card--interactive:hover {
@@ -6720,7 +6725,9 @@
   padding: 4px;
   border-radius: 4px;
   color: var(--chat-muted-fg, #64748b);
-  transition: color 0.15s ease, background 0.15s ease;
+  transition:
+    color 0.15s ease,
+    background 0.15s ease;
 }
 
 .ais-sp-card-external-link:hover {

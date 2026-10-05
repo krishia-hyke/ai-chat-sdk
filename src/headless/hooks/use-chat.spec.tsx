@@ -342,11 +342,11 @@ describe("useChat session loading (Wave 4)", () => {
   it("tracks isSessionLoading state during switchSession", async () => {
     let resolveLoad: ((val: any) => void) | null = null;
     const adapter = makeAdapter({
-      loadSession: (jest.fn().mockImplementation(() => {
+      loadSession: jest.fn().mockImplementation(() => {
         return new Promise((resolve) => {
           resolveLoad = resolve;
         });
-      }) as any),
+      }) as any,
     });
 
     const { result } = renderChat(adapter);
