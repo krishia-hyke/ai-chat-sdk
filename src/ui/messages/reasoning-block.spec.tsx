@@ -1,6 +1,6 @@
 import React from "react";
 import { render, screen, fireEvent } from "@testing-library/react";
-import { ReasoningBlock } from "./reasoning-block";
+import { ReasoningBlock, cleanStepLabel } from "./reasoning-block";
 import type { AgentStepEvent } from "../../headless/types/chat";
 import "@testing-library/jest-dom";
 
@@ -104,5 +104,26 @@ describe("ReasoningBlock", () => {
 
     expect(screen.getByText("Thinking it through")).toBeInTheDocument();
     assertOnlySdkClasses(container);
+  });
+
+  it("strips trailing dots from step labels and header to prevent duplicate ellipsis", () => {
+    expect(cleanStepLabel("Searching documents...")).toBe("Searching documents");
+    expect(cleanStepLabel("Evaluating policy... ")).toBe("Evaluating policy");
+    expect(cleanStepLabel("Thinking")).toBe("Thinking");
+
+    const dottedSteps: AgentStepEvent[] = [
+      step({ step_id: "s1", label: "Searching documents..." }),
+      step({ step_id: "s2", label: "Evaluating policy... " }),
+    ];
+
+    render(<ReasoningBlock steps={dottedSteps} isStreaming={true} />);
+
+    // Header cleans trailing dots and appends exactly one "..."
+    expect(screen.getByText("Evaluating policy...")).toBeInTheDocument();
+
+    // Inside the tree
+    fireEvent.click(screen.getByRole("button", { name: /Evaluating policy/ }));
+    expect(screen.getByText("Searching documents")).toBeInTheDocument();
+    expect(screen.getByText("Evaluating policy")).toBeInTheDocument();
   });
 });

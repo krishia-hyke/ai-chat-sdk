@@ -17,6 +17,10 @@ type SkillGroup = {
   steps: AgentStepEvent[];
 };
 
+export function cleanStepLabel(label: string): string {
+  return (label || "").replace(/[\s.]+$/, "");
+}
+
 function formatDuration(ms: number): string {
   if (ms < 1000) return `${ms}ms`;
   return `${(ms / 1000).toFixed(1)}s`;
@@ -74,7 +78,8 @@ export function ReasoningBlock({ steps, plan, isStreaming, elapsedMs }: Reasonin
   const headerLabel = useMemo(() => {
     if (isStreaming) {
       const last = steps[steps.length - 1];
-      return `${last?.label || "Thinking"}...`;
+      const clean = cleanStepLabel(last?.label || "Thinking");
+      return `${clean}...`;
     }
     return expanded ? "Hide reasoning" : "Show reasoning";
   }, [isStreaming, steps, expanded]);
@@ -108,35 +113,21 @@ export function ReasoningBlock({ steps, plan, isStreaming, elapsedMs }: Reasonin
     });
 
   return (
-    <div className="ais-reasoning-block" aria-live="polite">
-      {/* Toggle header — whole row is clickable; no chevron. While streaming, an
-          emerald gradient sweep + label shimmer convey "in progress" (see CSS). */}
+    <div className="ais-reasoning-root">
+      {/* Header bar */}
       <button
         type="button"
-        onClick={() => setExpanded((v) => !v)}
-        className={cn("ais-reasoning-toggle", isStreaming && "ais-reasoning-toggle--active")}
+        onClick={() => setExpanded((prev) => !prev)}
+        className="ais-reasoning-header"
         aria-expanded={expanded}
       >
-        <div className="ais-reasoning-headrow">
-          <SparkleIcon
-            spinning={isStreaming}
-            className={isStreaming ? "ais-reasoning-icon" : "ais-reasoning-icon--idle"}
-          />
-
-          <span
-            key={headerLabel}
-            className={cn(
-              "ais-reasoning-label ais-reasoning-textfade",
-              isStreaming && "ais-reasoning-label--active",
-            )}
-          >
-            {headerLabel}
-          </span>
-
-          {seconds !== null && <span className="ais-reasoning-seconds">{seconds}s</span>}
-        </div>
-
-        {isStreaming && <div className="ais-reasoning-sweep" aria-hidden />}
+        <SparkleIcon spinning={isStreaming} className="ais-reasoning-sparkle" />
+        <span className="ais-reasoning-title">{headerLabel}</span>
+        {seconds !== null && <span className="ais-reasoning-seconds">Thought for {seconds}s</span>}
+        <ChevronDown
+          className={cn("ais-reasoning-chevron", !expanded && "ais-reasoning-chevron--collapsed")}
+          aria-hidden
+        />
       </button>
 
       {/* Expanded content */}
@@ -182,7 +173,7 @@ export function ReasoningBlock({ steps, plan, isStreaming, elapsedMs }: Reasonin
                             isSkillCurrent && "ais-reasoning-label--active",
                           )}
                         >
-                          {group.skill.label}
+                          {cleanStepLabel(group.skill.label)}
                         </span>
                       </button>
 
@@ -221,7 +212,7 @@ export function ReasoningBlock({ steps, plan, isStreaming, elapsedMs }: Reasonin
                                             isCurrentStep && "ais-reasoning-step-label--current",
                                           )}
                                         >
-                                          {step.label}
+                                          {cleanStepLabel(step.label)}
                                         </span>
                                         {typeof step.duration_ms === "number" && !isStreaming && (
                                           <span className="ais-reasoning-duration">
@@ -248,7 +239,7 @@ export function ReasoningBlock({ steps, plan, isStreaming, elapsedMs }: Reasonin
                                           isCurrentStep && "ais-reasoning-step-label--current",
                                         )}
                                       >
-                                        {step.label}
+                                        {cleanStepLabel(step.label)}
                                       </span>
                                       {typeof step.duration_ms === "number" && !isStreaming && (
                                         <span className="ais-reasoning-duration">
@@ -294,7 +285,7 @@ export function ReasoningBlock({ steps, plan, isStreaming, elapsedMs }: Reasonin
                               isCurrentStep && "ais-reasoning-step-label--current",
                             )}
                           >
-                            {step.label}
+                            {cleanStepLabel(step.label)}
                           </span>
                           {typeof step.duration_ms === "number" && !isStreaming && (
                             <span className="ais-reasoning-duration">
