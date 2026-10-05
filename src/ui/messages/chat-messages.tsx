@@ -7,7 +7,7 @@ import { useChat } from "../../headless/hooks/use-chat";
 import { useStickyBottom } from "../../headless/hooks/use-sticky-bottom";
 import { ChatEmptyState } from "../empty-state/chat-empty-state";
 import { ChatMessage } from "./chat-message";
-import type { ChatMessage as ChatMessageType } from "../../headless/types/chat";
+import type { ChatMessage as ChatMessageType, MessageSource } from "../../headless/types/chat";
 import type { RecordTag } from "../../headless/utils/record-utils";
 
 interface ChatMessagesProps {
@@ -19,6 +19,12 @@ interface ChatMessagesProps {
   emptyState?: React.ReactNode;
   /** Whether to hide the default message actions (e.g. copy, retry). */
   hideMessageActions?: boolean;
+  /** Optional callback invoked when a citation marker or source pill is clicked. */
+  onSourceClick?: (source: MessageSource) => void;
+  /** Custom renderer for individual source pills below an assistant message. */
+  renderSourcePill?: (source: MessageSource, index: number) => React.ReactNode;
+  /** Custom modal/dialog renderer when viewing citation details. */
+  renderCitationModal?: (source: MessageSource, onClose: () => void) => React.ReactNode;
 }
 
 export function ChatMessages({
@@ -28,6 +34,9 @@ export function ChatMessages({
   renderMessageFooter,
   emptyState,
   hideMessageActions,
+  onSourceClick,
+  renderSourcePill,
+  renderCitationModal,
 }: ChatMessagesProps) {
   const {
     messages,
@@ -103,6 +112,9 @@ export function ChatMessages({
               renderMessageFooter={renderMessageFooter}
               canResolveToolApprovals={canResolveToolApprovals}
               onResolveToolApproval={resolveToolApproval}
+              onSourceClick={onSourceClick}
+              renderSourcePill={renderSourcePill}
+              renderCitationModal={renderCitationModal}
             />
           );
         })}

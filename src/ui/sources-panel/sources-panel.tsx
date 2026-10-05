@@ -4,16 +4,20 @@ import React, { useEffect, useRef } from "react";
 import { X, FileText, Database, ExternalLink, Library, Search } from "lucide-react";
 import type { UseSourcesReturn } from "../../headless/hooks/use-sources";
 import type { MessageSource } from "../../headless/types/chat";
+import { CitationModal } from "../messages/citation-modal";
 
-interface SourcesPanelProps {
+export interface SourcesPanelProps {
   sourcesCtx: UseSourcesReturn;
   className?: string;
+  onSourceClick?: (source: MessageSource) => void;
+  renderCitationModal?: (source: MessageSource, onClose: () => void) => React.ReactNode;
 }
 
 interface SourceCardProps {
   source: MessageSource;
   index: number;
   cardRef?: React.RefCallback<HTMLDivElement>;
+  onSelect?: (source: MessageSource) => void;
 }
 
 function getSourceLabel(source: MessageSource) {
@@ -42,17 +46,33 @@ function getSourceLabel(source: MessageSource) {
   return "Knowledge Base";
 }
 
-function SourceCard({ source, index, cardRef }: SourceCardProps) {
+function SourceCard({ source, index, cardRef, onSelect }: SourceCardProps) {
   const isDatabase = source.type === "database";
-  const accentColor = isDatabase ? "#7C3AED" : "#2563EB";
   const label = getSourceLabel(source);
 
-  const content = (
+  const handleClick = (e: React.MouseEvent) => {
+    // If user clicked the external link icon, let that link open in new tab
+    if ((e.target as HTMLElement).closest(".ais-sp-card-external-link")) {
+      return;
+    }
+    onSelect?.(source);
+  };
+
+  return (
     <div
       ref={cardRef}
-      className="ais-sp-card"
-      style={{ "--sp-accent": accentColor } as React.CSSProperties}
+      className="ais-sp-card ais-sp-card--interactive"
       id={`ais-cite-card-${index + 1}`}
+      onClick={handleClick}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onSelect?.(source);
+        }
+      }}
+      aria-label={`View citation details for ${source.title}`}
     >
       <div className="ais-sp-card-header">
         <div className="ais-sp-card-meta">
@@ -62,7 +82,18 @@ function SourceCard({ source, index, cardRef }: SourceCardProps) {
           <span className="ais-sp-card-label">{label}</span>
           {source.page != null && <span className="ais-sp-card-page">Page {source.page}</span>}
         </div>
-        {source.url && <ExternalLink size={12} className="ais-sp-card-external" />}
+        {source.url && (
+          <a
+            href={source.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="ais-sp-card-external-link"
+            aria-label={`Open external source link for ${source.title}`}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <ExternalLink size={13} className="ais-sp-card-external" />
+          </a>
+        )}
       </div>
 
       <h4 className="ais-sp-card-title">{source.title}</h4>
@@ -92,19 +123,15 @@ function SourceCard({ source, index, cardRef }: SourceCardProps) {
       )}
     </div>
   );
-
-  if (source.url) {
-    return (
-      <a href={source.url} target="_blank" rel="noopener noreferrer" className="ais-sp-card-anchor">
-        {content}
-      </a>
-    );
-  }
-
-  return content;
 }
 
-export function SourcesPanel({ sourcesCtx, className }: SourcesPanelProps) {
+export function SourcesPanel({
+  sourcesCtx,
+  className,
+  onSourceClick,
+  renderCitationModal,
+}: SourcesPanelProps) {
+  const [activeModalSource, setActiveModalSource] = React.useState<MessageSource | null>(null);
   const { activeSources, panelState, closeSources } = sourcesCtx;
   const panelRef = useRef<HTMLElement>(null);
 
@@ -178,11 +205,21 @@ export function SourcesPanel({ sourcesCtx, className }: SourcesPanelProps) {
         ) : (
           <div className="ais-sp-cards">
             {activeSources.map((source, i) => (
-              <SourceCard key={source.id} source={source} index={i} cardRef={setCardRef(i)} />
+              <SourceCard key={source.id || i} source={source} index={i} cardRef={setCardRef(i)} onSelect={(src) => { if (onSourceClick) onSourceClick(src); setActiveModalSource(src); }} />
             ))}
           </div>
         )}
       </div>
+      {activeModalSource && (
+        renderCitationModal ? (
+          renderCitationModal(activeModalSource, () => setActiveModalSource(null))
+        ) : (
+          <CitationModal
+            source={activeModalSource}
+            onClose={() => setActiveModalSource(null)}
+          />
+        )
+      )}
     </aside>
   );
 }

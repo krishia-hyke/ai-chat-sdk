@@ -28,3 +28,4 @@ export * from "./sidepanel/chat-sidepanel";
 export * from "./sidepanel/chat-sidepanel-layout";
 export * from "./chat-view/chat-view";
 export { ChatMessage as ChatMessageBubble } from "./messages/chat-message";
+export * from "./messages/citation-modal";

@@ -9,10 +9,14 @@ import { useChatContext } from "../../headless/context/chat-provider";
 import type { ChatMessage as ChatMessageType, ToolApproval } from "../../headless/types/chat";
 import { ArtifactChip } from "./artifact-chip";
 import { RecordChip } from "./record-chip";
+import { CitationModal } from "./citation-modal";
+import { FileText } from "lucide-react";
+import type { MessageSource } from "../../headless/types/chat";
 import { FollowUpSuggestions } from "./follow-up-suggestions";
 import { ContextRequiredChips } from "./context-required-chips";
 import { ToolApprovalCard } from "./tool-approval-card";
 import { ReasoningBlock } from "./reasoning-block";
+import { useIsMobile } from "../../headless/hooks/use-is-mobile";
 import { extractArtifactsFromContent } from "../../headless/utils/artifact-utils";
 import { extractSuggestionsFromContent } from "../../headless/utils/suggestion-utils";
 import type { RecordTag } from "../../headless/utils/record-utils";
@@ -88,6 +92,9 @@ interface ChatMessageProps {
     decision: "approved" | "denied",
     reason?: string,
   ) => void | Promise<void>;
+  onSourceClick?: (source: MessageSource) => void;
+  renderSourcePill?: (source: MessageSource, index: number) => React.ReactNode;
+  renderCitationModal?: (source: MessageSource, onClose: () => void) => React.ReactNode;
 }
 
 export function ChatMessage({
@@ -104,10 +111,15 @@ export function ChatMessage({
   hideMessageActions,
   canResolveToolApprovals,
   onResolveToolApproval,
+  onSourceClick,
+  renderSourcePill,
+  renderCitationModal,
 }: ChatMessageProps) {
   const { config, strings } = useChatContext();
+  const isMobile = useIsMobile();
   const enableArtifacts = config?.enableArtifacts ?? true;
   const [copied, setCopied] = React.useState(false);
+  const [activeCitationSource, setActiveCitationSource] = React.useState<MessageSource | null>(null);
   const copiedTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   React.useEffect(
     () => () => {
@@ -149,10 +161,22 @@ export function ChatMessage({
   const handleCiteClick = React.useCallback(
     (scrollToIndex?: number) => {
       if (message.sources?.length) {
-        sourcesCtx.openSources(message.id, message.sources, scrollToIndex);
+        const targetSource =
+          scrollToIndex !== undefined && message.sources[scrollToIndex]
+            ? message.sources[scrollToIndex]
+            : message.sources[0];
+        if (targetSource) {
+          if (onSourceClick) onSourceClick(targetSource);
+          setActiveCitationSource(targetSource);
+        }
+        // Only open the full SourcesPanel on desktop where it docks alongside the chat.
+        // On mobile, opening the 85vh sheet over the chat traps the user and obscures the modal.
+        if (!isMobile) {
+          sourcesCtx.openSources(message.id, message.sources, scrollToIndex);
+        }
       }
     },
-    [message.id, message.sources, sourcesCtx],
+    [message.id, message.sources, sourcesCtx, onSourceClick, isMobile],
   );
 
   // Build the components map inside the component so handleCiteClick is in scope.
@@ -287,14 +311,32 @@ export function ChatMessage({
             ))
           : null}
         {hasSources ? (
-          <button
-            type="button"
-            className="ais-sources-pill"
-            aria-label={`View ${message.sources!.length} sources`}
-            onClick={() => handleCiteClick(undefined)}
-          >
-            🔗 {message.sources!.length} {message.sources!.length === 1 ? "Source" : "Sources"}
-          </button>
+          <div className="ais-sources-pills-list">
+            {renderSourcePill ? (
+              message.sources!.map((source, index) => (
+                <span
+                  key={source.id || index}
+                  onClick={() => handleCiteClick(index)}
+                  className="ais-source-pill-wrapper"
+                >
+                  {renderSourcePill(source, index)}
+                </span>
+              ))
+            ) : (
+              message.sources!.map((source, index) => (
+                <button
+                  key={source.id || index}
+                  type="button"
+                  className="ais-sources-pill"
+                  aria-label={`View ${message.sources!.length} sources: ${source.title}`}
+                  onClick={() => handleCiteClick(index)}
+                >
+                  <FileText size={12} className="ais-sources-pill-icon" aria-hidden="true" />
+                  <span className="ais-sources-pill-title">{source.title}</span>
+                </button>
+              ))
+            )}
+          </div>
         ) : null}
         {/* Approval cards render DURING streaming — the run is paused server-side
             until the approval resolves, so this is the only interactive surface. */}
@@ -381,6 +423,16 @@ export function ChatMessage({
             )}
           </button>
         </div>
+      ) : null}
+      {activeCitationSource ? (
+        renderCitationModal ? (
+          renderCitationModal(activeCitationSource, () => setActiveCitationSource(null))
+        ) : (
+          <CitationModal
+            source={activeCitationSource}
+            onClose={() => setActiveCitationSource(null)}
+          />
+        )
       ) : null}
     </div>
   );

@@ -252,4 +252,79 @@ describe("ChatMessage", () => {
       undefined,
     );
   });
+  it("renders sources pill and opens CitationModal on click", () => {
+    const onSourceClick = jest.fn();
+    const message = {
+      id: "7",
+      role: "assistant",
+      content: "Here is verified info.",
+      timestamp: new Date(),
+      sources: [
+        {
+          id: "src_1",
+          title: "Policy.pdf",
+          snippet: "Remote work is permitted.",
+          metadata: { tags: "HR" },
+        },
+      ],
+    } as any;
+
+    render(
+      <ChatMessage
+        message={message}
+        onRetry={mockOnRetry}
+        onFollowUp={mockOnFollowUp}
+        artifactsCtx={mockArtifactsCtx}
+        sourcesCtx={mockSourcesCtx}
+        onSourceClick={onSourceClick}
+      />,
+    );
+
+    const pill = screen.getByRole("button", { name: /View 1 sources/ });
+    expect(pill).toBeInTheDocument();
+
+    fireEvent.click(pill);
+    expect(onSourceClick).toHaveBeenCalledWith(message.sources[0]);
+    expect(screen.getByRole("dialog", { name: /Source citation: Policy.pdf/ })).toBeInTheDocument();
+    expect(screen.getByText('"Remote work is permitted."')).toBeInTheDocument();
+  });
+
+  it("supports custom renderSourcePill and renderCitationModal", () => {
+    const message = {
+      id: "8",
+      role: "assistant",
+      content: "Content with custom source pill",
+      timestamp: new Date(),
+      sources: [
+        {
+          id: "src_2",
+          title: "CustomDoc.pdf",
+          snippet: "Custom snippet",
+        },
+      ],
+    } as any;
+
+    render(
+      <ChatMessage
+        message={message}
+        onRetry={mockOnRetry}
+        onFollowUp={mockOnFollowUp}
+        artifactsCtx={mockArtifactsCtx}
+        sourcesCtx={mockSourcesCtx}
+        renderSourcePill={(source) => <span data-testid="custom-pill">{source.title}</span>}
+        renderCitationModal={(source, onClose) => (
+          <div data-testid="custom-modal">
+            <span>Modal: {source.title}</span>
+            <button onClick={onClose}>Close Custom</button>
+          </div>
+        )}
+      />,
+    );
+
+    const customPill = screen.getByTestId("custom-pill");
+    expect(customPill).toHaveTextContent("CustomDoc.pdf");
+
+    fireEvent.click(customPill);
+    expect(screen.getByTestId("custom-modal")).toHaveTextContent("Modal: CustomDoc.pdf");
+  });
 });
