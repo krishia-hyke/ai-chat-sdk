@@ -35,10 +35,16 @@ export interface MessageSource {
     matchedSnippet?: string;
     verified?: boolean;
     invalidClaims?: string[];
+    citation?: string;
+    classification?: string;
+    tags?: string | string[];
+    [key: string]: unknown;
   };
   type?: "document" | "database";
   url?: string;
   retrievalScore?: number;
+  classification?: string;
+  tags?: string[];
 }
 
 export interface ContextRequiredChoice {
