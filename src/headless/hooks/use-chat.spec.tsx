@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Stream-drop recovery behavior of useChat's consumeStream loop.
  *
  * A long-running turn can outlive a single HTTP connection: a proxy or load
@@ -431,5 +431,85 @@ describe("useChat streaming source stripper (Wave 3)", () => {
     expect(assistant?.sources).toHaveLength(1);
     expect(assistant?.sources?.[0]?.title).toBe("Handbook.pdf");
     expect(assistant?.sources?.[0]?.snippet).toBe("2 days WFH");
+  });
+
+  it("strips streamed [cite: ...] tags and populates sources", async () => {
+    const stream = streamOf([
+      startedFrame,
+      sseFrame({ content: "For network access, " }),
+      sseFrame({ content: "connect to the secure gateway [cit" }),
+      sseFrame({ content: 'e: Network_Manual.pdf, citation: "VPN required"]' }),
+      doneFrame,
+    ]);
+
+    const adapter = makeAdapter({
+      sendMessage: jest.fn(async () => stream),
+    });
+
+    const { result } = renderChat(adapter);
+
+    await act(async () => {
+      await result.current.sendMessage("How to connect?");
+    });
+
+    const assistant = lastAssistantMessage(result);
+    expect(assistant).toBeDefined();
+    expect(assistant?.content).toBe("For network access, connect to the secure gateway");
+    expect(assistant?.sources).toHaveLength(1);
+    expect(assistant?.sources?.[0]?.title).toBe("Network_Manual.pdf");
+    expect(assistant?.sources?.[0]?.snippet).toBe("VPN required");
+  });
+
+  it("strips streamed OpenAI style 【1†source】 tags and populates sources", async () => {
+    const stream = streamOf([
+      startedFrame,
+      sseFrame({ content: "Revenue increased by 15% " }),
+      sseFrame({ content: "【" }),
+      sseFrame({ content: "1" }),
+      sseFrame({ content: "†" }),
+      sseFrame({ content: "source】" }),
+      sseFrame({ content: " this fiscal year." }),
+      doneFrame,
+    ]);
+
+    const adapter = makeAdapter({
+      sendMessage: jest.fn(async () => stream),
+    });
+
+    const { result } = renderChat(adapter);
+
+    await act(async () => {
+      await result.current.sendMessage("What is the growth rate?");
+    });
+
+    const assistant = lastAssistantMessage(result);
+    expect(assistant).toBeDefined();
+    expect(assistant?.content).toBe("Revenue increased by 15% this fiscal year.");
+    expect(assistant?.sources).toHaveLength(1);
+    expect(assistant?.sources?.[0]?.title).toBe("Source 1");
+  });
+
+  it("suppresses incomplete citation syntax if stream terminates without closing bracket", async () => {
+    const stream = streamOf([
+      startedFrame,
+      sseFrame({ content: "Guidelines are available.\n\n[source: Draft_Policy.pdf" }),
+      doneFrame,
+    ]);
+
+    const adapter = makeAdapter({
+      sendMessage: jest.fn(async () => stream),
+    });
+
+    const { result } = renderChat(adapter);
+
+    await act(async () => {
+      await result.current.sendMessage("Show guidelines");
+    });
+
+    const assistant = lastAssistantMessage(result);
+    expect(assistant).toBeDefined();
+    expect(assistant?.content).toBe("Guidelines are available.");
+    expect(assistant?.sources).toHaveLength(1);
+    expect(assistant?.sources?.[0]?.title).toBe("Draft_Policy.pdf");
   });
 });
