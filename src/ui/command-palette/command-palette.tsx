@@ -19,7 +19,7 @@ export function CommandPalette() {
   const [query, setQuery] = useState("");
   const commands = getCommandRegistry();
   const { sessions, isLoading } = useConversationHistory();
-  const { loadSession } = useChat();
+  const { loadSession, switchSession } = useChat();
   const { adapter, config } = useChatContext();
   const [selectedIndex, setSelectedIndex] = useState(0);
   const isMobile = useIsMobile();
@@ -74,12 +74,16 @@ export function CommandPalette() {
         label: s.title,
         description: "Recent chat",
         action: async () => {
-          const full = await adapter.loadSession(s.sessionId);
-          loadSession(full);
+          if (switchSession) {
+            await switchSession(s.sessionId);
+          } else {
+            const full = await adapter.loadSession(s.sessionId);
+            loadSession(full);
+          }
         },
       })),
     ];
-  }, [commands, sessions, q, adapter, loadSession]);
+  }, [commands, sessions, q, adapter, loadSession, switchSession]);
 
   useEffect(() => {
     if (!open) return;

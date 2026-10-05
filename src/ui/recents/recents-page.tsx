@@ -53,7 +53,7 @@ const GROUP_ORDER = ["Today", "Yesterday", "Previous 7 days", "Previous 30 days"
 export function RecentsPage({ onSelectSession, onNewConversation }: RecentsPageProps) {
   const { adapter } = useChatContext();
   const { sessions, isLoading, deleteSession } = useConversationHistory();
-  const { loadSession, currentSessionId, clearMessages } = useChat();
+  const { loadSession, switchSession, currentSessionId, clearMessages } = useChat();
   const [query, setQuery] = useState("");
   const [sessionToDelete, setSessionToDelete] = useState<string | null>(null);
 
@@ -101,8 +101,12 @@ export function RecentsPage({ onSelectSession, onNewConversation }: RecentsPageP
 
   async function handleSelect(session: Session) {
     try {
-      const full = await adapter.loadSession(session.sessionId);
-      loadSession(full);
+      if (switchSession) {
+        await switchSession(session.sessionId);
+      } else {
+        const full = await adapter.loadSession(session.sessionId);
+        loadSession(full);
+      }
       onSelectSession?.();
     } catch {
       // Session no longer exists on the backend — fall back to a new chat.

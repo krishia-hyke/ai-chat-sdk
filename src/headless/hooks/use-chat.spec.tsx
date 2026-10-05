@@ -337,3 +337,99 @@ describe("useChat artifacts lifecycle", () => {
     expect(onClearArtifacts).toHaveBeenCalledTimes(2);
   });
 });
+
+describe("useChat session loading (Wave 4)", () => {
+  it("tracks isSessionLoading state during switchSession", async () => {
+    let resolveLoad: ((val: any) => void) | null = null;
+    const adapter = makeAdapter({
+      loadSession: (jest.fn().mockImplementation(() => {
+        return new Promise((resolve) => {
+          resolveLoad = resolve;
+        });
+      }) as any),
+    });
+
+    const { result } = renderChat(adapter);
+    expect(result.current.isSessionLoading).toBe(false);
+
+    let switchPromise: Promise<any>;
+    act(() => {
+      switchPromise = result.current.switchSession!("sess-delayed");
+    });
+
+    expect(result.current.isSessionLoading).toBe(true);
+    expect(adapter.loadSession).toHaveBeenCalledWith("sess-delayed");
+
+    await act(async () => {
+      resolveLoad!({
+        sessionId: "sess-delayed",
+        title: "Loaded Session",
+        updatedAt: "2026-10-02T00:00:00Z",
+        messages: [],
+      });
+      await switchPromise;
+    });
+
+    expect(result.current.isSessionLoading).toBe(false);
+    expect(result.current.currentSessionId).toBe("sess-delayed");
+  });
+});
+
+describe("useChat step progression & status events (Wave 3)", () => {
+  it("creates reasoning steps from simple status events and transitions them to done", async () => {
+    const stream = streamOf([
+      startedFrame,
+      sseFrame({ type: "status", label: "Searching documents..." }),
+      sseFrame({ type: "status", label: "Analyzing results..." }),
+      sseFrame({ content: "Here are the results" }),
+      doneFrame,
+    ]);
+
+    const adapter = makeAdapter({
+      sendMessage: jest.fn(async () => stream),
+    });
+
+    const { result } = renderChat(adapter);
+
+    await act(async () => {
+      await result.current.sendMessage("Find docs");
+    });
+
+    const assistant = lastAssistantMessage(result);
+    expect(assistant).toBeDefined();
+    expect(assistant?.steps).toHaveLength(2);
+    expect(assistant?.steps?.[0]?.status).toBe("done");
+    expect(assistant?.steps?.[0]?.label).toBe("Searching documents...");
+    expect(assistant?.steps?.[1]?.status).toBe("done");
+    expect(assistant?.steps?.[1]?.label).toBe("Analyzing results...");
+  });
+});
+
+describe("useChat streaming source stripper (Wave 3)", () => {
+  it("strips trailing [source: ...] tags and populates sources", async () => {
+    const stream = streamOf([
+      startedFrame,
+      sseFrame({ content: "According to policy, " }),
+      sseFrame({ content: "remote work is permitted. [" }),
+      sseFrame({ content: 'source: Handbook.pdf, tags: HR, citation: "2 days WFH"]' }),
+      doneFrame,
+    ]);
+
+    const adapter = makeAdapter({
+      sendMessage: jest.fn(async () => stream),
+    });
+
+    const { result } = renderChat(adapter);
+
+    await act(async () => {
+      await result.current.sendMessage("What is the WFH policy?");
+    });
+
+    const assistant = lastAssistantMessage(result);
+    expect(assistant).toBeDefined();
+    expect(assistant?.content).toBe("According to policy, remote work is permitted.");
+    expect(assistant?.sources).toHaveLength(1);
+    expect(assistant?.sources?.[0]?.title).toBe("Handbook.pdf");
+    expect(assistant?.sources?.[0]?.snippet).toBe("2 days WFH");
+  });
+});

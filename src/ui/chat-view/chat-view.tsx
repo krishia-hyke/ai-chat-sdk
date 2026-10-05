@@ -15,7 +15,7 @@ import { FilesPanel } from "../files-panel/files-panel";
 import { ChatComposer } from "../composer/chat-composer";
 import { ChatMessages } from "../messages/chat-messages";
 import type { SessionWithMessages } from "../../headless/types/session";
-import type { ComposerAnnouncement } from "../../headless/types/chat";
+import type { ComposerAnnouncement, MessageSource } from "../../headless/types/chat";
 import {
   ResizableHandle,
   ResizablePanel,
@@ -38,6 +38,9 @@ export interface ChatViewProps {
   enableTools?: boolean;
   enableVoiceInput?: boolean;
   enableSendButton?: boolean;
+  onSourceClick?: (source: MessageSource) => void;
+  renderSourcePill?: (source: MessageSource, index: number) => React.ReactNode;
+  renderCitationModal?: (source: MessageSource, onClose: () => void) => React.ReactNode;
 }
 
 export function ChatView({
@@ -55,6 +58,9 @@ export function ChatView({
   enableTools,
   enableVoiceInput,
   enableSendButton,
+  onSourceClick,
+  renderSourcePill,
+  renderCitationModal,
 }: ChatViewProps) {
   const { config } = useChatContext();
   const artifactsCtx = useArtifacts();
@@ -73,6 +79,9 @@ export function ChatView({
         enableFileUpload={config.enableFileUpload}
         onExportArtifact={onExportArtifact}
         onRecordClick={onRecordClick}
+        onSourceClick={onSourceClick}
+        renderSourcePill={renderSourcePill}
+        renderCitationModal={renderCitationModal}
         renderMessageFooter={renderMessageFooter}
         recordPanel={recordPanel}
         className={className}
@@ -116,11 +125,15 @@ function ChatViewContent({
   enableTools,
   enableVoiceInput,
   enableSendButton,
+  onSourceClick,
+  renderSourcePill,
+  renderCitationModal,
 }: ChatViewContentProps) {
   const {
     sendMessage,
     stopStreaming,
     isStreaming,
+    isSessionLoading,
     loadSession,
     adapter,
     currentSessionId,
@@ -279,6 +292,33 @@ function ChatViewContent({
                 className="ais-resizable-panel"
               >
                 <main className="ais-chat-main">
+                  {isSessionLoading && (
+                    <div
+                      className="ais-session-loading-overlay"
+                      role="status"
+                      aria-live="polite"
+                      aria-label="Loading conversation..."
+                    >
+                      <div className="ais-session-loading-skeleton">
+                        <div className="ais-skeleton-header">
+                          <div className="ais-skeleton-avatar" />
+                          <div className="ais-skeleton-lines">
+                            <div className="ais-skeleton-line ais-skeleton-line--title" />
+                            <div className="ais-skeleton-line ais-skeleton-line--meta" />
+                          </div>
+                        </div>
+                        <div className="ais-skeleton-bubble">
+                          <div className="ais-skeleton-line ais-skeleton-line--full" />
+                          <div className="ais-skeleton-line ais-skeleton-line--full" />
+                          <div className="ais-skeleton-line ais-skeleton-line--half" />
+                        </div>
+                        <div className="ais-session-loading-badge">
+                          <div className="ais-spinner" />
+                          <span>Loading conversation...</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                   <ChatMessages
                     artifactsCtx={artifactsCtx}
                     sourcesCtx={sourcesCtx}
@@ -286,6 +326,9 @@ function ChatViewContent({
                     renderMessageFooter={renderMessageFooter}
                     emptyState={emptyState}
                     hideMessageActions={hideMessageActions}
+                    onSourceClick={onSourceClick}
+                    renderSourcePill={renderSourcePill}
+                    renderCitationModal={renderCitationModal}
                   />
                   <ChatComposer
                     enableTools={enableTools}
@@ -312,7 +355,11 @@ function ChatViewContent({
                   className="ais-resizable-panel"
                 >
                   {showSourcesPanel ? (
-                    <SourcesPanel sourcesCtx={sourcesCtx} />
+                    <SourcesPanel
+                      sourcesCtx={sourcesCtx}
+                      onSourceClick={onSourceClick}
+                      renderCitationModal={renderCitationModal}
+                    />
                   ) : (
                     showFilesPanel && <FilesPanel filesCtx={filesCtx} />
                   )}

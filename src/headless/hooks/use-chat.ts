@@ -41,6 +41,7 @@ import { extractArtifactsFromContent } from "../utils/artifact-utils";
 import { extractCitationsFromContent } from "../utils/citation-utils";
 import { extractRecordTagsFromContent, type RecordTag } from "../utils/record-utils";
 import { extractSuggestionsFromContent } from "../utils/suggestion-utils";
+import { StreamingSourceStripper, stripSources } from "../utils/streaming-source-stripper";
 
 function generateMessageId(): string {
   const ts = Date.now();
@@ -70,6 +71,11 @@ function createAssistantMessage(): ChatMessage {
 }
 
 interface ParsedEvent {
+  [key: string]: unknown;
+  label?: string;
+  phase?: "start" | "done" | string;
+  status?: string;
+  duration_ms?: number;
   content?: string;
   isComplete?: boolean;
   error?: string;
@@ -98,6 +104,8 @@ interface ParsedEvent {
 }
 
 export interface UseChatReturn {
+  isSessionLoading?: boolean;
+  switchSession?: (sessionId: string) => Promise<SessionWithMessages>;
   messages: ChatMessage[];
   streamingState: StreamingState;
   isStreaming: boolean;
@@ -177,6 +185,7 @@ function useProvideChat(
     isStreaming: false,
   });
   const [isLoading, setIsLoading] = useState(false);
+  const [isSessionLoading, setIsSessionLoading] = useState(false);
   // Resume affordance for the composer: which control (if any) to offer for the last
   // crashed run, and the execution id a "resumable" run continues from. Seeded by
   // loadSession from the backend hint; cleared the moment any new run starts.
@@ -193,6 +202,8 @@ function useProvideChat(
   const onClearArtifactsRef = useRef(onClearArtifacts);
   onClearArtifactsRef.current = onClearArtifacts;
   const accumContentRef = useRef("");
+  const accumProcessedContentRef = useRef("");
+  const streamingSourceStripperRef = useRef<StreamingSourceStripper | null>(null);
   // Per-stream counter giving repeatable runner control events (tool calls, handoffs)
   // unique step ids. Reset at the start of each sendMessage.
   const stepSeqRef = useRef(0);
@@ -209,6 +220,8 @@ function useProvideChat(
     abortControllerRef.current?.abort();
     abortControllerRef.current = null;
     activeExecutionIdRef.current = null;
+    streamingSourceStripperRef.current = null;
+    accumProcessedContentRef.current = "";
     setMessages([]);
     setStreamingState({ isStreaming: false });
     setIsLoading(false);
@@ -232,6 +245,10 @@ function useProvideChat(
       const MAX_RECONNECTS = 5;
       let currentReader = reader;
       let reconnectAttempt = 0;
+
+      accumContentRef.current = "";
+      accumProcessedContentRef.current = "";
+      streamingSourceStripperRef.current = new StreamingSourceStripper();
 
       const settleStopped = (stopped = false): void => {
         setMessages((prev) =>
@@ -286,12 +303,24 @@ function useProvideChat(
           onEvent(event: EventSourceMessage) {
             if (event.data === "[DONE]") {
               sawTerminal = true;
+              let finalSources: MessageSource[] | undefined;
+              if (streamingSourceStripperRef.current) {
+                const flushed = streamingSourceStripperRef.current.flush();
+                accumProcessedContentRef.current += flushed;
+                const collected = streamingSourceStripperRef.current.getCollectedSources();
+                if (collected.length > 0) {
+                  finalSources = collected;
+                }
+              }
               setMessages((prev) =>
                 prev.map((msg) =>
                   msg.id === assistantMessageId
                     ? {
                         ...msg,
                         isStreaming: false,
+                        content: stripSources(accumProcessedContentRef.current || msg.content),
+                        sources: finalSources ?? msg.sources,
+                        steps: msg.steps?.map((s) => (s.status === "in_progress" ? { ...s, status: "done" } : s)),
                         elapsedMs: msg.startedAt ? Date.now() - msg.startedAt : msg.elapsedMs,
                       }
                     : msg,
@@ -367,6 +396,10 @@ function useProvideChat(
             const rawParsedContent = extractContent(parsed);
             if (rawParsedContent && outerEventType !== "artifact" && !isRunnerControl) {
               accumContentRef.current += rawParsedContent;
+              const strippedChunk = streamingSourceStripperRef.current
+                ? streamingSourceStripperRef.current.process(rawParsedContent)
+                : rawParsedContent;
+              accumProcessedContentRef.current += strippedChunk;
             }
 
             let frontendArtifacts: Artifact[] = [];
@@ -402,9 +435,20 @@ function useProvideChat(
               const suggestionsResult = extractSuggestionsFromContent(cleanedAccumContent);
               cleanedAccumContent = suggestionsResult.cleanedContent;
               frontendSuggestions = suggestionsResult.suggestions;
+
+              if (streamingSourceStripperRef.current) {
+                const flushed = streamingSourceStripperRef.current.flush();
+                accumProcessedContentRef.current += flushed;
+                const collectedSources = streamingSourceStripperRef.current.getCollectedSources();
+                if (collectedSources.length > 0) {
+                  frontendCitations = [...frontendCitations, ...collectedSources];
+                }
+              }
+              cleanedAccumContent = stripSources(cleanedAccumContent);
             } else {
-              if (accumContentRef.current.includes("<record")) {
-                const { cleanedContent } = extractRecordTagsFromContent(accumContentRef.current);
+              cleanedAccumContent = accumProcessedContentRef.current || accumContentRef.current;
+              if (cleanedAccumContent.includes("<record")) {
+                const { cleanedContent } = extractRecordTagsFromContent(cleanedAccumContent);
                 cleanedAccumContent = cleanedContent;
               }
             }
@@ -433,14 +477,46 @@ function useProvideChat(
                   };
                 }
 
-                if (eventType === "step" && parsed.step) {
-                  const existing = msg.steps ?? [];
-                  const idx = existing.findIndex((s) => s.step_id === parsed.step?.step_id);
-                  const nextSteps =
-                    idx >= 0
-                      ? existing.map((s, i) => (i === idx ? { ...s, ...parsed.step } : s))
-                      : [...existing, parsed.step];
-                  return { ...msg, steps: nextSteps };
+                if (eventType === "step") {
+                  const rawStep =
+                    parsed.step ||
+                    (parsed.payload?.step as Partial<AgentStepEvent> | undefined) ||
+                    (parsed.payload && typeof parsed.payload === "object" && ("label" in parsed.payload || "step_id" in parsed.payload)
+                      ? (parsed.payload as unknown as Partial<AgentStepEvent>)
+                      : undefined) ||
+                    (parsed.label ? (parsed as unknown as Partial<AgentStepEvent>) : undefined);
+
+                  if (rawStep && (rawStep.label || rawStep.step_id)) {
+                    const stepId =
+                      rawStep.step_id ||
+                      (rawStep.label
+                        ? `step_${rawStep.label.toLowerCase().replace(/[^a-z0-9_]/g, "_")}`
+                        : `step_${stepSeqRef.current}`);
+                    const normalizedStep: AgentStepEvent = {
+                      type: rawStep.type ?? "reasoning",
+                      label: rawStep.label ?? "Step",
+                      status: rawStep.status ?? "in_progress",
+                      step_id: stepId,
+                      ...(rawStep.duration_ms !== undefined ? { duration_ms: rawStep.duration_ms } : {}),
+                      ...(rawStep.detail !== undefined ? { detail: rawStep.detail } : {}),
+                    };
+
+                    const existing = msg.steps ?? [];
+                    const idx = existing.findIndex((s) => s.step_id === normalizedStep.step_id);
+                    const updatedExisting =
+                      normalizedStep.status === "in_progress" && idx < 0
+                        ? existing.map((s) =>
+                            s.status === "in_progress" && (s.type === "reasoning" || s.type === "tool_call")
+                              ? { ...s, status: "done" as const }
+                              : s,
+                          )
+                        : existing;
+                    const nextSteps =
+                      idx >= 0
+                        ? updatedExisting.map((s, i) => (i === idx ? { ...s, ...normalizedStep } : s))
+                        : [...updatedExisting, normalizedStep];
+                    return { ...msg, steps: nextSteps };
+                  }
                 }
 
                 // Runner control event mapped to a step chip (thought → reasoning,
@@ -450,10 +526,18 @@ function useProvideChat(
                   const step = runnerStep;
                   const existing = msg.steps ?? [];
                   const idx = existing.findIndex((s) => s.step_id === step.step_id);
+                  const updatedExisting =
+                    step.status === "in_progress" && idx < 0
+                      ? existing.map((s) =>
+                          s.status === "in_progress" && (s.type === "reasoning" || s.type === "tool_call")
+                            ? { ...s, status: "done" as const }
+                            : s,
+                        )
+                      : existing;
                   const nextSteps =
                     idx >= 0
-                      ? existing.map((s, i) => (i === idx ? { ...s, ...step } : s))
-                      : [...existing, step];
+                      ? updatedExisting.map((s, i) => (i === idx ? { ...s, ...step } : s))
+                      : [...updatedExisting, step];
                   return { ...msg, steps: nextSteps };
                 }
 
@@ -526,6 +610,9 @@ function useProvideChat(
                     : [];
                   const finalSuggestions =
                     doneSuggestions.length > 0 ? doneSuggestions : frontendSuggestions;
+                  const finalizedSteps = msg.steps?.map((s) =>
+                    s.status === "in_progress" ? { ...s, status: "done" as const } : s,
+                  );
                   return {
                     ...msg,
                     content: hasClientSideChanges ? cleanedAccumContent : msg.content,
@@ -537,6 +624,7 @@ function useProvideChat(
                         : (parsed.sources ?? payloadSources ?? msg.sources),
                     records: frontendRecords.length > 0 ? frontendRecords : msg.records,
                     suggestions: finalSuggestions.length > 0 ? finalSuggestions : msg.suggestions,
+                    steps: finalizedSteps ?? msg.steps,
                     elapsedMs: msg.startedAt ? Date.now() - msg.startedAt : msg.elapsedMs,
                   };
                 }
@@ -550,7 +638,7 @@ function useProvideChat(
                   };
                 }
 
-                const nextContent = parsedContent ? `${msg.content}${parsedContent}` : msg.content;
+                const nextContent = cleanedAccumContent || (parsedContent ? `${msg.content}${parsedContent}` : msg.content);
 
                 return {
                   ...msg,
@@ -642,6 +730,8 @@ function useProvideChat(
         // ids) to avoid duplicated/misplaced chips. Tool-approval cards are preserved
         // (deduped by approvalId on replay) so a still-pending approval survives.
         accumContentRef.current = "";
+      accumProcessedContentRef.current = "";
+      streamingSourceStripperRef.current = new StreamingSourceStripper();
         stepSeqRef.current = 0;
         setMessages((prev) =>
           prev.map((msg) =>
@@ -1102,6 +1192,20 @@ function useProvideChat(
     [setCurrentSession, setActiveContext, adapter, consumeStream],
   );
 
+  const switchSession = useCallback(
+    async (sessionId: string) => {
+      setIsSessionLoading(true);
+      try {
+        const full = await adapter.loadSession(sessionId);
+        loadSession(full);
+        return full;
+      } finally {
+        setIsSessionLoading(false);
+      }
+    },
+    [adapter, loadSession],
+  );
+
   const canResolveToolApprovals = typeof adapter.resolveToolApproval === "function";
 
   const patchToolApproval = useCallback(
@@ -1172,6 +1276,8 @@ function useProvideChat(
       resumeState,
       resumeRun,
       loadSession,
+      isSessionLoading,
+      switchSession,
       canResolveToolApprovals,
       resolveToolApproval,
     }),
@@ -1190,6 +1296,8 @@ function useProvideChat(
       resumeState,
       resumeRun,
       loadSession,
+      isSessionLoading,
+      switchSession,
       canResolveToolApprovals,
       resolveToolApproval,
     ],
