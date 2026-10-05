@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { createParser, type EventSourceMessage } from "eventsource-parser";
 import {
@@ -1092,6 +1092,12 @@ function useProvideChat(
   const loadSession = useCallback(
     (session: SessionWithMessages) => {
       abortControllerRef.current?.abort();
+      abortControllerRef.current = null;
+      activeExecutionIdRef.current = null;
+      streamingSourceStripperRef.current = null;
+      accumContentRef.current = "";
+      accumProcessedContentRef.current = "";
+      stepSeqRef.current = 0;
       onClearArtifactsRef.current?.();
       setCurrentSession({
         sessionId: session.sessionId,
@@ -1206,6 +1212,16 @@ function useProvideChat(
 
   const switchSession = useCallback(
     async (sessionId: string) => {
+      abortControllerRef.current?.abort();
+      abortControllerRef.current = null;
+      activeExecutionIdRef.current = null;
+      streamingSourceStripperRef.current = null;
+      accumContentRef.current = "";
+      accumProcessedContentRef.current = "";
+      stepSeqRef.current = 0;
+      setStreamingState({ isStreaming: false });
+      setIsLoading(false);
+
       setIsSessionLoading(true);
       try {
         const full = await adapter.loadSession(sessionId);

@@ -373,6 +373,55 @@ describe("useChat session loading (Wave 4)", () => {
     expect(result.current.isSessionLoading).toBe(false);
     expect(result.current.currentSessionId).toBe("sess-delayed");
   });
+
+  it("aborts active in-flight stream and prevents corruption when switching sessions", async () => {
+    let capturedSignal: AbortSignal | undefined;
+    const adapter = makeAdapter({
+      sendMessage: jest.fn(async (_text, opts?: { signal?: AbortSignal }) => {
+        capturedSignal = opts?.signal;
+        return new ReadableStream<Uint8Array>({
+          start(controller) {
+            controller.enqueue(startedFrame);
+            controller.enqueue(sseFrame({ content: "Partial token in session A..." }));
+          },
+        });
+      }),
+      loadSession: jest.fn(async (sessionId: string) => ({
+        sessionId,
+        title: "Switched Session B",
+        updatedAt: "2026-10-05T00:00:00Z",
+        messages: [
+          {
+            id: "msg_session_b_user",
+            role: "user" as const,
+            content: "Hello from session B",
+            timestamp: new Date(),
+          },
+        ],
+      })),
+    });
+
+    const { result } = renderChat(adapter);
+
+    await act(async () => {
+      void result.current.sendMessage("Initial prompt in session A");
+    });
+
+    expect(capturedSignal?.aborted).toBe(false);
+    expect(result.current.isStreaming).toBe(true);
+
+    await act(async () => {
+      await result.current.switchSession!("session_b");
+    });
+
+    // Old stream signal must be aborted immediately upon switchSession
+    expect(capturedSignal?.aborted).toBe(true);
+    expect(result.current.isStreaming).toBe(false);
+    expect(result.current.currentSessionId).toBe("session_b");
+    expect(result.current.messages).toHaveLength(1);
+    expect(result.current.messages[0]!.id).toBe("msg_session_b_user");
+    expect(result.current.messages[0]!.content).toBe("Hello from session B");
+  });
 });
 
 describe("useChat step progression & status events (Wave 3)", () => {
